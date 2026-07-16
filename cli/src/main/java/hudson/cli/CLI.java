@@ -367,8 +367,8 @@ public class CLI {
         ClientManager client = ClientManager.createClient(JdkClientContainer.class.getName()); // ~ ContainerProvider.getWebSocketContainer()
         client.getProperties().put(ClientProperties.REDIRECT_ENABLED, true); // https://tyrus-project.github.io/documentation/1.13.1/index/tyrus-proprietary-config.html#d0e1775
         if (factory.noCertificateCheck) {
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, new TrustManager[] {new NoCheckTrustManager(factory.noCertificateCheck)}, new SecureRandom());
+            SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+            sslContext.init(null, new TrustManager[] {new NoCheckTrustManager()}, new SecureRandom());
             SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(sslContext);
             sslEngineConfigurator.setHostnameVerifier((s, sslSession) -> true);
             client.getProperties().put(ClientProperties.SSL_ENGINE_CONFIGURATOR, sslEngineConfigurator);
@@ -416,8 +416,8 @@ public class CLI {
             throws GeneralSecurityException, IOException, InterruptedException {
         LOGGER.log(FINE, "Trying to connect to {0} via plain protocol over HTTP", url);
         if (factory.noCertificateCheck) {
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, new TrustManager[] {new NoCheckTrustManager(factory.noCertificateCheck)}, new SecureRandom());
+            SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+            sslContext.init(null, new TrustManager[] {new NoCheckTrustManager()}, new SecureRandom());
             HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
             HttpsURLConnection.setDefaultHostnameVerifier((s, sslSession) -> true);
         }
