@@ -49,6 +49,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import jenkins.AgentProtocol;
 import jenkins.health.HealthCheck;
 import jenkins.model.Jenkins;
@@ -207,13 +209,12 @@ public final class TcpSlaveAgentListener extends Thread {
     /**
      * Initiates the shuts down of the listener.
      */
-    @SuppressFBWarnings(value = "UNENCRYPTED_SOCKET", justification = "TODO needs triage")
     public void shutdown() {
         shuttingDown = true;
         try {
             SocketAddress localAddress = serverSocket.getLocalAddress();
             if (localAddress instanceof InetSocketAddress address) {
-                Socket client = new Socket(address.getHostName(), address.getPort());
+                SSLSocket client = (SSLSocket) SSLSocketFactory.getDefault().createSocket(address.getHostName(), address.getPort());
                 client.setSoTimeout(1000); // waking the acceptor loop should be quick
                 new PingAgentProtocol().connect(client);
             }
