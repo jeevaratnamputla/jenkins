@@ -1,4 +1,5 @@
 import debounce from "lodash/debounce";
+import DOMPurify from "dompurify";
 
 import pluginManagerAvailable from "./templates/plugin-manager/available.hbs";
 import pluginManager from "./api/pluginManager";
@@ -54,7 +55,7 @@ function applyFilter(searchQuery) {
         includeHealthScores,
       });
 
-      tbody.insertAdjacentHTML("beforeend", rows);
+      tbody.insertAdjacentHTML("beforeend", DOMPurify.sanitize(rows));
 
       updateInstallButtonState();
     },
