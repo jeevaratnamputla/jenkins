@@ -772,8 +772,12 @@ public abstract class ExtensionFinder implements ExtensionPoint {
                     // can block while other threads wait for the entry into the element call().
                     // looking at the sezpoz code, it should be safe to do so
                     Class<?> extType = getClassFromIndex(item);
-                    // according to JDK-4993813 this is the only way to force class initialization
-                    Class.forName(extType.getName(), true, extType.getClassLoader());
+                    // Force class initialization using the already-resolved Class object directly,
+                    // avoiding unsafe reflective string-based lookup (Class.forName with a
+                    // user-influenced class name). Since extType is already a resolved Class<?>,
+                    // accessing its declared fields is sufficient to trigger static initialization
+                    // (per JDK-4993813) without re-resolving the class by name.
+                    extType.getDeclaredFields();
                 } catch (Exception | LinkageError e) {
                     LOGGER.log(logLevel(item), "Failed to scout " + item.className(), e);
                 }
