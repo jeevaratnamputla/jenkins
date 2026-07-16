@@ -3,7 +3,7 @@ window.defaultUpdateSiteId = (function () {
   var defaultSiteId = document
     .querySelector("#default-site-id")
     .getAttribute("data-default-update-site-id");
-  return defaultSiteId ? defaultSiteId.replace("'", "") : "default";
+  return defaultSiteId ? defaultSiteId.replace(/'/g, "") : "default";
 })();
 
 window.setupWizardExtensions = [];
