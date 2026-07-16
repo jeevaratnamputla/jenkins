@@ -1314,14 +1314,11 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
          * @throws IOException if there were problems downloading the resource.
          * @see DownloadJob
          */
-        @SuppressFBWarnings(value = "WEAK_MESSAGE_DIGEST_SHA1", justification = "SHA-1 is only used as a fallback if SHA-256/SHA-512 are not available")
         public File download(DownloadJob job, URL src) throws IOException {
-            MessageDigest sha1 = null;
             MessageDigest sha256 = null;
             MessageDigest sha512 = null;
             try {
-                // Java spec says SHA-1 and SHA-256 exist, and SHA-512 might not, so one try/catch block should be fine
-                sha1 = MessageDigest.getInstance("SHA-1");
+                // Java spec says SHA-256 exists, and SHA-512 might not, so one try/catch block should be fine
                 sha256 = MessageDigest.getInstance("SHA-256");
                 sha512 = MessageDigest.getInstance("SHA-512");
             } catch (NoSuchAlgorithmException nsa) {
@@ -1356,9 +1353,8 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
                 t.setName(oldName + ": " + src);
                 try (OutputStream _out = Files.newOutputStream(tmp.toPath());
                      OutputStream out =
-                             sha1 != null ? new DigestOutputStream(
-                                     sha256 != null ? new DigestOutputStream(
-                                             sha512 != null ? new DigestOutputStream(_out, sha512) : _out, sha256) : _out, sha1) : _out;
+                             sha256 != null ? new DigestOutputStream(
+                                     sha512 != null ? new DigestOutputStream(_out, sha512) : _out, sha256) : _out;
                      InputStream in = con.getInputStream();
                      CountingInputStream cin = new CountingInputStream(in)) {
                     if (LOGGER.isLoggable(Level.FINE)) {
@@ -1386,10 +1382,6 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
                     throw new IOException("Inconsistent file length: expected " + total + " but only got " + tmp.length());
                 }
 
-                if (sha1 != null) {
-                    byte[] digest = sha1.digest();
-                    job.computedSHA1 = Base64.getEncoder().encodeToString(digest);
-                }
                 if (sha256 != null) {
                     byte[] digest = sha256.digest();
                     job.computedSHA256 = Base64.getEncoder().encodeToString(digest);
