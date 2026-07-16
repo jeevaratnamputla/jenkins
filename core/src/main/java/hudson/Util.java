@@ -631,19 +631,17 @@ public class Util {
     }
 
     /**
-     * Computes MD5 digest of the given input stream.
-     *
-     * This method should only be used for non-security applications where the MD5 weakness is not a problem.
+     * Computes SHA-256 digest of the given input stream.
      *
      * @param source
      *      The stream will be closed by this method at the end of this method.
      * @return
-     *      32-char wide string
+     *      hex-encoded digest string
      */
     @NonNull
     public static String getDigestOf(@NonNull InputStream source) throws IOException {
         try (source) {
-            MessageDigest md5 = getMd5();
+            MessageDigest md5 = getDigest();
             try (InputStream in = new DigestInputStream(source, md5); OutputStream out = OutputStream.nullOutputStream()) {
                 // Note: IOUtils.copy() buffers the input internally, so there is no
                 // need to use a BufferedInputStream.
@@ -651,7 +649,7 @@ public class Util {
             }
             return toHexString(md5.digest());
         } catch (NoSuchAlgorithmException e) {
-            throw new IOException("MD5 not installed", e);    // impossible
+            throw new IOException("SHA-256 not installed", e);    // impossible
         }
         /* JENKINS-18178: confuses Maven 2 runner
         try {
@@ -663,11 +661,9 @@ public class Util {
     }
 
     // TODO JENKINS-60563 remove MD5 from all usages in Jenkins
-    @SuppressFBWarnings(value = "WEAK_MESSAGE_DIGEST_MD5", justification =
-            "This method should only be used for non-security applications where the MD5 weakness is not a problem.")
     @Deprecated
-    private static MessageDigest getMd5() throws NoSuchAlgorithmException {
-        return MessageDigest.getInstance("MD5");
+    private static MessageDigest getDigest() throws NoSuchAlgorithmException {
+        return MessageDigest.getInstance("SHA-256");
     }
 
     @NonNull
@@ -680,9 +676,9 @@ public class Util {
     }
 
     /**
-     * Computes the MD5 digest of a file.
+     * Computes the SHA-256 digest of a file.
      * @param file a file
-     * @return a 32-character string
+     * @return a hex-encoded digest string
      * @throws IOException in case reading fails
      * @since 1.525
      */
