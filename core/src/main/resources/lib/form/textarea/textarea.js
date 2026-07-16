@@ -19,7 +19,8 @@ Behaviour.specify("TEXTAREA.codemirror", "textarea", 0, function (e) {
       config = { mode: match[1] };
     } else {
       console.log(
-        "Failed to parse codemirror-config '{" + config + "}' as JSON",
+        "Failed to parse codemirror-config '%s' as JSON",
+        "{" + config + "}",
         ex,
       );
       config = {};

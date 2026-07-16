@@ -1000,11 +1000,10 @@ public abstract class Launcher {
         }
 
         @Override
-        @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "TODO needs triage")
         public Channel launchChannel(String[] cmd, OutputStream out, FilePath workDir, Map<String, String> envVars) throws IOException {
             printCommandLine(cmd, workDir);
 
-            ProcessBuilder pb = new ProcessBuilder(cmd);
+            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd));
             pb.directory(toFile(workDir));
             if (envVars != null) pb.environment().putAll(envVars);
 

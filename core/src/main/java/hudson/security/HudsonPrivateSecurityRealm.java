@@ -65,7 +65,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -1212,9 +1211,8 @@ public class HudsonPrivateSecurityRealm extends AbstractPasswordBasedSecurityRea
      */
     private static final String ENCODED_INVALID_USER_PASSWORD = PASSWORD_ENCODER.encode(generatePassword());
 
-    @SuppressFBWarnings(value = "PREDICTABLE_RANDOM", justification = "Doesn't need to be secure, we're just not hardcoding a 'wrong' password")
     private static String generatePassword() {
-        String password = new Random().ints(20, 33, 127).mapToObj(i -> (char) i)
+        String password = new SecureRandom().ints(20, 33, 127).mapToObj(i -> (char) i)
                 .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append).toString();
         return password;
     }
