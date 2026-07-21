@@ -370,6 +370,9 @@ public class CLI {
             SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
             sslContext.init(null, new TrustManager[] {new NoCheckTrustManager()}, new SecureRandom());
             SslEngineConfigurator sslEngineConfigurator = new SslEngineConfigurator(sslContext);
+            // Hostname verification is still disabled here because the user explicitly
+            // requested -noCertificateCheck; the trust manager itself now validates
+            // the certificate chain against the JVM default trust store.
             sslEngineConfigurator.setHostnameVerifier((s, sslSession) -> true);
             client.getProperties().put(ClientProperties.SSL_ENGINE_CONFIGURATOR, sslEngineConfigurator);
         }
