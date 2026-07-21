@@ -1001,9 +1001,21 @@ public abstract class Launcher {
 
         @Override
         public Channel launchChannel(String[] cmd, OutputStream out, FilePath workDir, Map<String, String> envVars) throws IOException {
+            if (cmd == null || cmd.length == 0) {
+                throw new IOException("Command array must not be null or empty");
+            }
+            for (String token : cmd) {
+                if (token == null) {
+                    throw new IOException("Command array must not contain null elements");
+                }
+            }
+
             printCommandLine(cmd, workDir);
 
-            ProcessBuilder pb = new ProcessBuilder(Arrays.asList(cmd));
+            // ProcessBuilder is invoked with a discrete token list (not a shell string),
+            // so no shell is spawned and metacharacters in individual tokens are not interpreted.
+            List<String> cmdList = new ArrayList<>(Arrays.asList(cmd));
+            ProcessBuilder pb = new ProcessBuilder(cmdList);
             pb.directory(toFile(workDir));
             if (envVars != null) pb.environment().putAll(envVars);
 
