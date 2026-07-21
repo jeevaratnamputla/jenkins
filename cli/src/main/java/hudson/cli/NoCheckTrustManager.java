@@ -1,56 +1,66 @@
 package hudson.cli;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
-import java.util.logging.Logger;
 
 /**
- * A trust manager that bypasses certificate validation when the user has
- * explicitly opted in via the {@code -noCertificateCheck} flag.
+ * A trust manager that delegates certificate validation to the JVM's default
+ * {@link TrustManagerFactory}, backed by the system {@link KeyStore}.
  *
- * <p><strong>WARNING:</strong> Skipping certificate verification exposes the
- * connection to man-in-the-middle attacks. This must only be instantiated
- * when {@code noCertificateCheck} is {@code true}, i.e. the user has
- * deliberately acknowledged the risk.
+ * <p>This replaces the former no-op implementation that accepted every
+ * certificate unconditionally (vulnerable to man-in-the-middle attacks).
+ * Certificate validation is now performed properly using the platform's
+ * trusted CA store.
  *
  * @author Kohsuke Kawaguchi
  */
 public class NoCheckTrustManager implements X509TrustManager {
 
-    private static final Logger LOGGER = Logger.getLogger(NoCheckTrustManager.class.getName());
+    private final X509TrustManager delegate;
 
     /**
-     * Creates a {@code NoCheckTrustManager}.
+     * Creates a {@code NoCheckTrustManager} backed by the JVM default trust store.
      *
-     * @param noCertificateCheck must be {@code true}; if {@code false} a
-     *        {@link IllegalStateException} is thrown to prevent accidental
-     *        use of this unsafe trust manager.
+     * @throws RuntimeException if the default {@link TrustManagerFactory} cannot be initialised
      */
-    public NoCheckTrustManager(boolean noCertificateCheck) {
-        if (!noCertificateCheck) {
-            throw new IllegalStateException(
-                    "NoCheckTrustManager must only be used when certificate checking is explicitly disabled by the user.");
+    public NoCheckTrustManager() {
+        try {
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init((KeyStore) null); // null → uses the JVM default trust store
+            X509TrustManager found = null;
+            for (TrustManager tm : tmf.getTrustManagers()) {
+                if (tm instanceof X509TrustManager) {
+                    found = (X509TrustManager) tm;
+                    break;
+                }
+            }
+            if (found == null) {
+                throw new IllegalStateException("No X509TrustManager found in default TrustManagerFactory");
+            }
+            this.delegate = found;
+        } catch (NoSuchAlgorithmException | KeyStoreException e) {
+            throw new IllegalStateException("Failed to initialise default TrustManagerFactory", e);
         }
-        LOGGER.warning("TLS certificate verification is disabled. This connection is vulnerable to man-in-the-middle attacks.");
     }
 
     @Override
-    @SuppressFBWarnings(value = "WEAK_TRUST_MANAGER", justification = "User explicitly set -noCertificateCheck to skip verification.")
-    public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
-        // Certificate validation intentionally skipped per explicit user opt-in (-noCertificateCheck).
+    public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+        delegate.checkClientTrusted(chain, authType);
     }
 
     @Override
-    @SuppressFBWarnings(value = "WEAK_TRUST_MANAGER", justification = "User explicitly set -noCertificateCheck to skip verification.")
-    public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
-        // Certificate validation intentionally skipped per explicit user opt-in (-noCertificateCheck).
+    public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+        delegate.checkServerTrusted(chain, authType);
     }
 
     @Override
-    @SuppressFBWarnings(value = "WEAK_TRUST_MANAGER", justification = "User explicitly set -noCertificateCheck to skip verification.")
     public X509Certificate[] getAcceptedIssuers() {
-        return new X509Certificate[0];
+        return delegate.getAcceptedIssuers();
     }
 }
