@@ -24,6 +24,9 @@ public class NoCheckTrustManager implements X509TrustManager {
 
     private final X509TrustManager delegate;
 
+    /** The real trust manager obtained from the JVM default trust store. */
+    private final X509TrustManager delegate;
+
     /**
      * Creates a {@code NoCheckTrustManager} backed by the JVM default trust store.
      *

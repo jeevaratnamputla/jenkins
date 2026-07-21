@@ -214,9 +214,10 @@ public abstract class Proc {
          *      null to redirect stderr to stdout.
          */
         @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "Command injection is the point of this old, barely used class.")
+        @Restricted(NoExternalUse.class)
         public LocalProc(String[] cmd, String[] env, InputStream in, OutputStream out, OutputStream err, File workDir) throws IOException {
             this(calcName(cmd),
-                  stderr(environment(new ProcessBuilder(cmd), env).directory(workDir), err == null || err == SELFPUMP_OUTPUT),
+                  stderr(environment(new ProcessBuilder(cmd), env).directory(workDir), err == null || err == SELFPUMP_OUTPUT), // nosemgrep: command-injection-process-builder
                   in, out, err);
         }
 

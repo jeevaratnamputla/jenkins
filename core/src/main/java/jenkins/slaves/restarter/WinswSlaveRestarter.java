@@ -7,6 +7,10 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
@@ -30,8 +34,30 @@ public class WinswSlaveRestarter extends SlaveRestarter {
         }
     }
 
-    @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "TODO needs triage")
+    /**
+     * Validates that the given executable path is an absolute path pointing to
+     * an existing regular file, preventing command injection via a maliciously
+     * crafted WINSW_EXECUTABLE environment variable value.
+     */
+    private static Path validateExecutable(String executablePath) throws IOException {
+        Path path;
+        try {
+            path = Paths.get(executablePath);
+        } catch (InvalidPathException e) {
+            throw new IOException("Invalid executable path: " + executablePath, e);
+        }
+        if (!path.isAbsolute()) {
+            throw new IOException("Executable path must be absolute: " + executablePath);
+        }
+        if (!Files.isRegularFile(path)) {
+            throw new IOException("Executable path does not point to a regular file: " + executablePath);
+        }
+        return path;
+    }
+
+    @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "exe is validated to be an absolute path to an existing regular file before use")
     private int exec(String cmd) throws InterruptedException, IOException {
+        validateExecutable(exe);
         ProcessBuilder pb = new ProcessBuilder(exe, cmd);
         pb.redirectErrorStream(true);
         Process p = pb.start();
