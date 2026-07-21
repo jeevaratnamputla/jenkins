@@ -284,6 +284,18 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
      * @return Created Update center. {@link UpdateCenter} by default, but may be overridden
      * @since 2.4
      */
+    /**
+     * Allowlist of fully-qualified class names that are permitted to be loaded as a custom
+     * UpdateCenter via the {@code hudson.model.UpdateCenter.className} system property.
+     * Restricting reflection to known, trusted classes prevents unsafe arbitrary class
+     * loading triggered by attacker-controlled system-property values.
+     */
+    private static final java.util.Set<String> ALLOWED_UPDATE_CENTER_CLASSES =
+            java.util.Collections.unmodifiableSet(new java.util.HashSet<>(java.util.Arrays.asList(
+                    UpdateCenter.class.getName()
+                    // Add additional fully-qualified trusted subclass names here as needed.
+            )));
+
     @NonNull
     public static UpdateCenter createUpdateCenter(@CheckForNull UpdateCenterConfiguration config) {
         String requiredClassName = SystemProperties.getString(UpdateCenter.class.getName() + ".className", null);
@@ -293,22 +305,26 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
             return createDefaultUpdateCenter(config);
         }
 
+        // Validate against the allowlist before performing any reflective class loading.
+        // Class.forName() initialises static blocks at load time; loading an arbitrary
+        // attacker-controlled class name before a subclass check can cause unintended
+        // code execution, authentication bypass, or other unsafe control-flow changes.
+        if (!ALLOWED_UPDATE_CENTER_CLASSES.contains(requiredClassName)) {
+            LOGGER.log(WARNING, "The requested custom Update Center class {0} is not in the"
+                    + " allowlist. Falling back to default.", requiredClassName);
+            return createDefaultUpdateCenter(config);
+        }
+
         LOGGER.log(Level.FINE, "Using the custom update center: {0}", requiredClassName);
         try {
-            final Class<?> clazz = Class.forName(requiredClassName).asSubclass(UpdateCenter.class);
-            if (!UpdateCenter.class.isAssignableFrom(clazz)) {
-                LOGGER.log(Level.SEVERE, "The specified custom Update Center {0} is not an instance of {1}. Falling back to default.",
-                        new Object[] {requiredClassName, UpdateCenter.class.getName()});
-                return createDefaultUpdateCenter(config);
-            }
-            final Class<? extends UpdateCenter> ucClazz = clazz.asSubclass(UpdateCenter.class);
+            final Class<? extends UpdateCenter> ucClazz =
+                    Class.forName(requiredClassName).asSubclass(UpdateCenter.class);
             final Constructor<? extends UpdateCenter> defaultConstructor = ucClazz.getConstructor();
             final Constructor<? extends UpdateCenter> configConstructor = ucClazz.getConstructor(UpdateCenterConfiguration.class);
             LOGGER.log(Level.FINE, "Using the constructor {0} Update Center configuration for {1}",
                     new Object[] {config != null ? "with" : "without", requiredClassName});
             return config != null ? configConstructor.newInstance(config) : defaultConstructor.newInstance();
         } catch (ClassCastException e) {
-            // Should never happen
             LOGGER.log(WARNING, "UpdateCenter class {0} does not extend hudson.model.UpdateCenter. Using default.", requiredClassName);
         } catch (NoSuchMethodException e) {
             LOGGER.log(WARNING, String.format("UpdateCenter class %s does not define one of the required constructors. Using default", requiredClassName), e);
