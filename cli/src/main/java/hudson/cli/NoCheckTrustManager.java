@@ -8,25 +8,21 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
-import java.util.logging.Logger;
 
 /**
  * A trust manager that delegates certificate validation to the JVM's default
- * trust chain (via {@link TrustManagerFactory}), using the platform's default
- * {@link KeyStore}.
+ * {@link TrustManagerFactory}, backed by the system {@link KeyStore}.
  *
- * <p>This replaces the previous no-op implementation that accepted every
- * certificate unconditionally, which was vulnerable to man-in-the-middle
- * attacks. Callers that previously relied on certificate-check bypass
- * (e.g. the {@code -noCertificateCheck} CLI flag) should avoid installing
- * a custom {@link javax.net.ssl.SSLContext} altogether and let the JVM
- * default validation apply.
+ * <p>This replaces the former no-op implementation that accepted every
+ * certificate unconditionally (vulnerable to man-in-the-middle attacks).
+ * Certificate validation is now performed properly using the platform's
+ * trusted CA store.
  *
  * @author Kohsuke Kawaguchi
  */
 public class NoCheckTrustManager implements X509TrustManager {
 
-    private static final Logger LOGGER = Logger.getLogger(NoCheckTrustManager.class.getName());
+    private final X509TrustManager delegate;
 
     /** The real trust manager obtained from the JVM default trust store. */
     private final X509TrustManager delegate;
@@ -34,15 +30,12 @@ public class NoCheckTrustManager implements X509TrustManager {
     /**
      * Creates a {@code NoCheckTrustManager} backed by the JVM default trust store.
      *
-     * @throws RuntimeException if the default {@link TrustManagerFactory} cannot
-     *         be initialised (wraps {@link NoSuchAlgorithmException} or
-     *         {@link KeyStoreException}).
+     * @throws RuntimeException if the default {@link TrustManagerFactory} cannot be initialised
      */
     public NoCheckTrustManager() {
         try {
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            // Passing null uses the default JVM KeyStore (cacerts).
-            tmf.init((KeyStore) null);
+            tmf.init((KeyStore) null); // null → uses the JVM default trust store
             X509TrustManager found = null;
             for (TrustManager tm : tmf.getTrustManagers()) {
                 if (tm instanceof X509TrustManager) {
@@ -55,18 +48,18 @@ public class NoCheckTrustManager implements X509TrustManager {
             }
             this.delegate = found;
         } catch (NoSuchAlgorithmException | KeyStoreException e) {
-            throw new RuntimeException("Failed to initialise default TrustManagerFactory", e);
+            throw new IllegalStateException("Failed to initialise default TrustManagerFactory", e);
         }
     }
 
     @Override
-    public void checkClientTrusted(X509Certificate[] x509Certificates, String authType) throws CertificateException {
-        delegate.checkClientTrusted(x509Certificates, authType);
+    public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+        delegate.checkClientTrusted(chain, authType);
     }
 
     @Override
-    public void checkServerTrusted(X509Certificate[] x509Certificates, String authType) throws CertificateException {
-        delegate.checkServerTrusted(x509Certificates, authType);
+    public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+        delegate.checkServerTrusted(chain, authType);
     }
 
     @Override
