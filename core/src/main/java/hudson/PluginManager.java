@@ -301,7 +301,18 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         if (pmClassName != null && !pmClassName.isBlank()) {
             LOGGER.log(FINE, String.format("Use of custom plugin manager [%s] requested.", pmClassName));
             try {
-                final Class<? extends PluginManager> klass = Class.forName(pmClassName).asSubclass(PluginManager.class);
+                // Use the context class loader explicitly rather than relying on the implicit
+                // caller class loader used by Class.forName(String), to avoid unsafe reflection
+                // where an attacker-controlled class name could direct instantiation to an
+                // unintended class. The assignability check against PluginManager.class is
+                // performed before any constructor lookup or instantiation takes place.
+                ClassLoader cl = Thread.currentThread().getContextClassLoader();
+                Class<?> resolved = Class.forName(pmClassName, false, cl);
+                if (!PluginManager.class.isAssignableFrom(resolved)) {
+                    LOGGER.log(WARNING, String.format("Provided class [%s] does not extend PluginManager. Using default.", pmClassName));
+                    return new LocalPluginManager(jenkins);
+                }
+                final Class<? extends PluginManager> klass = resolved.asSubclass(PluginManager.class);
                 // Iteration is in declaration order
                 for (PMConstructor c : PMConstructor.values()) {
                     PluginManager pm = c.create(klass, jenkins);
