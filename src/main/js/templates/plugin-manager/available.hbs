@@ -35,12 +35,12 @@
             {{/if}}
             {{#if this.excerpt }}
                 <div class="except">
-                    {{{ this.excerpt }}}
+                    {{ this.excerpt }}
                 </div>
             {{/if}}
             {{#if this.newerCoreRequired }}
                 <div class="jenkins-alert jenkins-alert-danger">
-                    {{{ this.newerCoreRequired }}}
+                    {{ this.newerCoreRequired }}
                 </div>
             {{/if}}
             {{#if this.unresolvedSecurityWarnings }}
@@ -59,12 +59,12 @@
             {{/if}}
             {{#if this.deprecated }}
                 <div class="jenkins-alert jenkins-alert-warning">
-                    {{{ this.deprecated }}}
+                    {{ this.deprecated }}
                 </div>
             {{/if}}
             {{#if this.adoptMe }}
                 <div class="jenkins-alert jenkins-alert-warning">
-                    {{{ this.adoptMe }}}
+                    {{ this.adoptMe }}
                 </div>
             {{/if}}
         </td>
