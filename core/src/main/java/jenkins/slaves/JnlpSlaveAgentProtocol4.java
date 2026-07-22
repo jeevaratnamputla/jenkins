@@ -123,7 +123,7 @@ public class JnlpSlaveAgentProtocol4 extends AgentProtocol {
         // prepare our SSLContext
         SSLContext sslContext;
         try {
-            sslContext = SSLContext.getInstance("TLS");
+            sslContext = SSLContext.getInstance("TLSv1.2");
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("Java runtime specification requires support for TLS algorithm", e);
         }
