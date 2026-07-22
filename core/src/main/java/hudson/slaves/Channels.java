@@ -49,6 +49,9 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -220,9 +223,8 @@ public class Channels {
      * @deprecated removed without replacement
      */
     @Deprecated
-    @SuppressFBWarnings(value = "UNENCRYPTED_SERVER_SOCKET", justification = "TODO needs triage")
     public static Channel newJVM(String displayName, TaskListener listener, JVMBuilder vmb, FilePath workDir, ClasspathBuilder classpath) throws IOException {
-        ServerSocket serverSocket = new ServerSocket();
+        SSLServerSocket serverSocket = (SSLServerSocket) SSLServerSocketFactory.getDefault().createServerSocket();
         serverSocket.bind(new InetSocketAddress("localhost", 0));
         serverSocket.setSoTimeout((int) TimeUnit.SECONDS.toMillis(10));
 
@@ -237,7 +239,7 @@ public class Channels {
         listener.getLogger().println("Starting " + displayName);
         Proc p = vmb.launch(new LocalLauncher(listener)).stdout(listener).pwd(workDir).start();
 
-        Socket s = serverSocket.accept();
+        SSLSocket s = (SSLSocket) serverSocket.accept();
         serverSocket.close();
 
         return forProcess("Channel to " + displayName, Computer.threadPoolForRemoting,
