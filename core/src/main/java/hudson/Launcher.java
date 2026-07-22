@@ -1010,6 +1010,27 @@ public abstract class Launcher {
                 }
             }
 
+            // Validate the executable (cmd[0]) is an absolute path to prevent
+            // relative-path hijacking and shell-injection via executable name.
+            if (!new File(cmd[0]).isAbsolute()) {
+                throw new IOException(
+                    "Executable must be specified as an absolute path, got: " + cmd[0]);
+            }
+
+            // Reject any argument token that contains shell metacharacters.
+            // Although ProcessBuilder does not invoke a shell, the presence of
+            // metacharacters in what should be discrete arguments is a strong
+            // indicator of an injection attempt and is rejected defensively.
+            // cmd[0] (the executable) is already validated as an absolute path above.
+            java.util.regex.Pattern shellMetaPattern =
+                java.util.regex.Pattern.compile("[&|;<>`$(){}\\[\\]!#~*?\\\\\"' \t\n\r]");
+            for (int i = 1; i < cmd.length; i++) {
+                if (shellMetaPattern.matcher(cmd[i]).find()) {
+                    throw new IOException(
+                        "Command argument contains disallowed characters: " + cmd[i]);
+                }
+            }
+
             printCommandLine(cmd, workDir);
 
             // ProcessBuilder is invoked with a discrete token list (not a shell string),
