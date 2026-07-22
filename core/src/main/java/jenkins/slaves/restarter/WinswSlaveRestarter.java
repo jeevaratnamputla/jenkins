@@ -57,8 +57,8 @@ public class WinswSlaveRestarter extends SlaveRestarter {
 
     @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "exe is validated to be an absolute path to an existing regular file before use")
     private int exec(String cmd) throws InterruptedException, IOException {
-        validateExecutable(exe);
-        ProcessBuilder pb = new ProcessBuilder(exe, cmd);
+        Path validatedExe = validateExecutable(exe);
+        ProcessBuilder pb = new ProcessBuilder(validatedExe.toString(), cmd);
         pb.redirectErrorStream(true);
         Process p = pb.start();
         p.getOutputStream().close();
