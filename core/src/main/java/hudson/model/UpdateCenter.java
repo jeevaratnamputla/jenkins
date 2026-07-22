@@ -1878,7 +1878,7 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
 
             MessageDigest messageDigest;
             try {
-                messageDigest = MessageDigest.getInstance("SHA-1");
+                messageDigest = MessageDigest.getInstance("SHA-1"); // nosemgrep: use-of-sha1 -- SHA-1 is only used as a legacy fallback for update sites that do not provide SHA-256 or SHA-512 checksums; SHA-256/SHA-512 are always preferred and checked first
             } catch (NoSuchAlgorithmException e) {
                 throw new UnsupportedOperationException(e);
             }
