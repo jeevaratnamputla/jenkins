@@ -53,7 +53,7 @@ public class JSONSignatureValidator {
     /**
      * Verifies the signature in the update center data file.
      */
-    @SuppressFBWarnings(value = "WEAK_MESSAGE_DIGEST_SHA1", justification = "SHA-1 is only used as a fallback if SHA-512 is not available")
+    @SuppressFBWarnings(value = "WEAK_MESSAGE_DIGEST_SHA1", justification = "SHA-1 has been replaced; SHA-256 is used as a fallback if SHA-512 is not available")
     public FormValidation verifySignature(JSONObject o) throws IOException {
         try {
             FormValidation warning = null;
@@ -104,7 +104,7 @@ public class JSONSignatureValidator {
                     case ERROR:
                         return resultSha512;
                     case WARNING:
-                        LOGGER.log(Level.INFO, "JSON data source '" + name + "' does not provide a SHA-512 content checksum or signature. Looking for SHA-1.");
+                        LOGGER.log(Level.INFO, "JSON data source '" + name + "' does not provide a SHA-512 content checksum or signature. Looking for SHA-256.");
                         break;
                     case OK:
                         break;
@@ -112,28 +112,28 @@ public class JSONSignatureValidator {
                         throw new AssertionError("Unknown form validation kind: " + resultSha512.kind);
                 }
             } catch (NoSuchAlgorithmException nsa) {
-                LOGGER.log(Level.WARNING, "Failed to verify potential SHA-512 digest/signature, falling back to SHA-1", nsa);
+                LOGGER.log(Level.WARNING, "Failed to verify potential SHA-512 digest/signature, falling back to SHA-256", nsa);
             }
 
             // if we get here, SHA-512 passed, wasn't provided, or the JRE is terrible.
 
-            MessageDigest digest = MessageDigest.getInstance("SHA1");
-            Signature sig = Signature.getInstance("SHA1withRSA");
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            Signature sig = Signature.getInstance("SHA256withRSA");
             sig.initVerify(certs.getFirst());
-            FormValidation resultSha1 = checkSpecificSignature(o, signature, digest, "correct_digest", sig, "correct_signature", "SHA-1");
+            FormValidation resultSha256 = checkSpecificSignature(o, signature, digest, "correct_digest256", sig, "correct_signature256", "SHA-256");
 
-            switch (resultSha1.kind) {
+            switch (resultSha256.kind) {
                 case ERROR:
-                    return resultSha1;
+                    return resultSha256;
                 case WARNING:
                     if (resultSha512.kind == FormValidation.Kind.WARNING) {
                         // neither signature provided
-                        return FormValidation.error("No correct_signature or correct_signature512 entry found in '" + name + "'.");
+                        return FormValidation.error("No correct_signature256 or correct_signature512 entry found in '" + name + "'.");
                     }
                 case OK:
                     break;
                 default:
-                    throw new AssertionError("Unknown form validation kind: " + resultSha1.kind);
+                    throw new AssertionError("Unknown form validation kind: " + resultSha256.kind);
             }
 
             if (warning != null)  return warning;
