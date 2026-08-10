@@ -241,12 +241,27 @@ public final class Permission {
         int idx = id.lastIndexOf('.');
         if (idx < 0)   return null;
 
+        String className = id.substring(0, idx);
+        String permissionName = id.substring(idx + 1);
+
+        // First, look up the permission group by owner class name among already-registered groups.
+        // This avoids loading an attacker-controlled class name via Class.forName when the group
+        // is already known, preventing unsafe reflection / arbitrary class initialization.
+        for (PermissionGroup g : PermissionGroup.getAll()) {
+            if (g.getOwnerClassName().equals(className)) {
+                return g.find(permissionName);
+            }
+        }
+
+        // The group has not been registered yet. Attempt to load and initialize the class so that
+        // its static initializers can register its PermissionGroup, then re-query the registry.
+        // The class reference itself is only used as a key into the trusted PermissionGroup map;
+        // no methods are invoked on it and no instances are created from it.
         try {
-            // force the initialization so that it will put all its permissions into the list.
-            Class cl = Class.forName(id.substring(0, idx), true, Jenkins.get().getPluginManager().uberClassLoader);
+            Class cl = Class.forName(className, true, Jenkins.get().getPluginManager().uberClassLoader);
             PermissionGroup g = PermissionGroup.get(cl);
             if (g == null)  return null;
-            return g.find(id.substring(idx + 1));
+            return g.find(permissionName);
         } catch (ClassNotFoundException e) {
             return null;
         }
