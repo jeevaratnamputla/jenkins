@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -55,8 +56,13 @@ public class WinswSlaveRestarter extends SlaveRestarter {
         return path;
     }
 
-    @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "exe is validated to be an absolute path to an existing regular file before use")
+    private static final Set<String> ALLOWED_COMMANDS = Set.of("status", "restart!");
+
+    @SuppressFBWarnings(value = "COMMAND_INJECTION", justification = "exe is validated to be an absolute path to an existing regular file before use, and cmd is restricted to a fixed allowlist")
     private int exec(String cmd) throws InterruptedException, IOException {
+        if (!ALLOWED_COMMANDS.contains(cmd)) {
+            throw new IOException("Disallowed winsw command: " + cmd);
+        }
         Path validatedExe = validateExecutable(exe);
         ProcessBuilder pb = new ProcessBuilder(validatedExe.toString(), cmd);
         pb.redirectErrorStream(true);
