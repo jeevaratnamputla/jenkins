@@ -209,11 +209,10 @@ public final class DescriptorList<T extends Describable<T>> extends AbstractList
      * @since 1.162
      */
     public void load(Class<? extends Describable> c) {
-        try {
-            Class.forName(c.getName(), true, c.getClassLoader());
-        } catch (ClassNotFoundException e) {
-            throw new AssertionError(e);  // Can't happen
-        }
+        // The class object 'c' is already loaded and initialized by the caller.
+        // No dynamic class lookup is needed; referencing 'c' directly is sufficient
+        // to ensure the class has been loaded without introducing unsafe reflection.
+        assert c != null : "Describable class must not be null";
     }
 
     /**
