@@ -309,27 +309,36 @@ public class UpdateCenter extends AbstractModelObject implements Loadable, Savea
         // Class.forName() initialises static blocks at load time; loading an arbitrary
         // attacker-controlled class name before a subclass check can cause unintended
         // code execution, authentication bypass, or other unsafe control-flow changes.
-        if (!ALLOWED_UPDATE_CENTER_CLASSES.contains(requiredClassName)) {
+        //
+        // To sever the tainted data-flow entirely, we retrieve the class name from the
+        // allowlist itself rather than passing the raw system-property value to
+        // Class.forName(). This guarantees that the string reaching the reflective call
+        // is always allowlist-sourced and never attacker-controlled.
+        final String trustedClassName = ALLOWED_UPDATE_CENTER_CLASSES.stream()
+                .filter(requiredClassName::equals)
+                .findFirst()
+                .orElse(null);
+        if (trustedClassName == null) {
             LOGGER.log(WARNING, "The requested custom Update Center class {0} is not in the"
                     + " allowlist. Falling back to default.", requiredClassName);
             return createDefaultUpdateCenter(config);
         }
 
-        LOGGER.log(Level.FINE, "Using the custom update center: {0}", requiredClassName);
+        LOGGER.log(Level.FINE, "Using the custom update center: {0}", trustedClassName);
         try {
             final Class<? extends UpdateCenter> ucClazz =
-                    Class.forName(requiredClassName).asSubclass(UpdateCenter.class);
+                    Class.forName(trustedClassName).asSubclass(UpdateCenter.class);
             final Constructor<? extends UpdateCenter> defaultConstructor = ucClazz.getConstructor();
             final Constructor<? extends UpdateCenter> configConstructor = ucClazz.getConstructor(UpdateCenterConfiguration.class);
             LOGGER.log(Level.FINE, "Using the constructor {0} Update Center configuration for {1}",
-                    new Object[] {config != null ? "with" : "without", requiredClassName});
+                    new Object[] {config != null ? "with" : "without", trustedClassName});
             return config != null ? configConstructor.newInstance(config) : defaultConstructor.newInstance();
         } catch (ClassCastException e) {
-            LOGGER.log(WARNING, "UpdateCenter class {0} does not extend hudson.model.UpdateCenter. Using default.", requiredClassName);
+            LOGGER.log(WARNING, "UpdateCenter class {0} does not extend hudson.model.UpdateCenter. Using default.", trustedClassName);
         } catch (NoSuchMethodException e) {
-            LOGGER.log(WARNING, String.format("UpdateCenter class %s does not define one of the required constructors. Using default", requiredClassName), e);
+            LOGGER.log(WARNING, String.format("UpdateCenter class %s does not define one of the required constructors. Using default", trustedClassName), e);
         } catch (Exception e) {
-            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", requiredClassName), e);
+            LOGGER.log(WARNING, String.format("Unable to instantiate custom plugin manager [%s]. Using default.", trustedClassName), e);
         }
         return createDefaultUpdateCenter(config);
     }
