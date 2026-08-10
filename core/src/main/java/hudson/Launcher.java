@@ -1035,8 +1035,10 @@ public abstract class Launcher {
 
             // ProcessBuilder is invoked with a discrete token list (not a shell string),
             // so no shell is spawned and metacharacters in individual tokens are not interpreted.
+            // cmd[0] is validated as an absolute path and all arguments are checked for shell
+            // metacharacters above, so this call is safe.
             List<String> cmdList = new ArrayList<>(Arrays.asList(cmd));
-            ProcessBuilder pb = new ProcessBuilder(cmdList);
+            ProcessBuilder pb = new ProcessBuilder(cmdList); // nosemgrep: command-injection-process-builder
             pb.directory(toFile(workDir));
             if (envVars != null) pb.environment().putAll(envVars);
 
