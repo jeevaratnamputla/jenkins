@@ -26,6 +26,7 @@ package jenkins.model;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.model.Descriptor.FormException;
 import hudson.security.Permission;
 import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
@@ -47,13 +48,13 @@ public class GlobalProjectNamingStrategyConfiguration extends GlobalConfiguratio
         if (optJSONObject != null) {
             final JSONObject strategyObject = optJSONObject.getJSONObject("namingStrategy");
             final String className = strategyObject.getString("$class");
-            try {
-                Class clazz = Class.forName(className, true, j.getPluginManager().uberClassLoader);
-                final ProjectNamingStrategy strategy = (ProjectNamingStrategy) req.bindJSON(clazz, strategyObject);
-                j.setProjectNamingStrategy(strategy);
-            } catch (ClassNotFoundException e) {
-                throw new FormException(e, "namingStrategy");
+            ProjectNamingStrategy.ProjectNamingStrategyDescriptor descriptor =
+                    ProjectNamingStrategy.all().find(className);
+            if (descriptor == null) {
+                throw new FormException("Unknown ProjectNamingStrategy class: " + className, "namingStrategy");
             }
+            final ProjectNamingStrategy strategy = req.bindJSON(descriptor.clazz, strategyObject);
+            j.setProjectNamingStrategy(strategy);
         }
         if (j.getProjectNamingStrategy() == null) {
             j.setProjectNamingStrategy(ProjectNamingStrategy.DEFAULT_NAMING_STRATEGY);
