@@ -206,6 +206,38 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
     /** Custom plugin manager system property or context param. */
     public static final String CUSTOM_PLUGIN_MANAGER = PluginManager.class.getName() + ".className";
 
+    /**
+     * System property that allows administrators to extend the allowlist of permitted custom
+     * PluginManager class names. The value must be a comma-separated list of fully-qualified
+     * class names. Only classes present in this allowlist (combined with the built-in defaults)
+     * will be considered when resolving {@link #CUSTOM_PLUGIN_MANAGER}.
+     */
+    public static final String CUSTOM_PLUGIN_MANAGER_ALLOWLIST = PluginManager.class.getName() + ".allowedClassNames";
+
+    /**
+     * Built-in allowlist of fully-qualified class names that are permitted to be used as a
+     * custom PluginManager. Guards against unsafe reflection when the CUSTOM_PLUGIN_MANAGER
+     * system property is set to an attacker-controlled value.
+     */
+    private static final Set<String> ALLOWED_PLUGIN_MANAGER_CLASS_NAMES;
+
+    static {
+        Set<String> allowed = new java.util.HashSet<>(java.util.Arrays.asList(
+                "hudson.LocalPluginManager",
+                "hudson.ClassicPluginStrategy"
+        ));
+        String extraAllowed = SystemProperties.getString(CUSTOM_PLUGIN_MANAGER_ALLOWLIST);
+        if (extraAllowed != null && !extraAllowed.isBlank()) {
+            for (String name : extraAllowed.split(",")) {
+                String trimmed = name.trim();
+                if (!trimmed.isEmpty()) {
+                    allowed.add(trimmed);
+                }
+            }
+        }
+        ALLOWED_PLUGIN_MANAGER_CLASS_NAMES = java.util.Collections.unmodifiableSet(allowed);
+    }
+
     private static final Logger LOGGER = Logger.getLogger(PluginManager.class.getName());
 
     /**
@@ -301,11 +333,20 @@ public abstract class PluginManager extends AbstractModelObject implements OnMas
         if (pmClassName != null && !pmClassName.isBlank()) {
             LOGGER.log(FINE, String.format("Use of custom plugin manager [%s] requested.", pmClassName));
             try {
+                // Allowlist check: reject any class name that is not pre-approved before
+                // performing any reflective operation. This prevents unsafe reflection where
+                // an attacker-controlled value for CUSTOM_PLUGIN_MANAGER could cause an
+                // arbitrary class to be loaded or instantiated.
+                if (!ALLOWED_PLUGIN_MANAGER_CLASS_NAMES.contains(pmClassName)) {
+                    LOGGER.log(WARNING, String.format(
+                            "Provided class [%s] is not in the allowed list of custom PluginManager classes. "
+                            + "To permit it, add its fully-qualified name to the system property [%s]. Using default.",
+                            pmClassName, CUSTOM_PLUGIN_MANAGER_ALLOWLIST));
+                    return new LocalPluginManager(jenkins);
+                }
                 // Use the context class loader explicitly rather than relying on the implicit
-                // caller class loader used by Class.forName(String), to avoid unsafe reflection
-                // where an attacker-controlled class name could direct instantiation to an
-                // unintended class. The assignability check against PluginManager.class is
-                // performed before any constructor lookup or instantiation takes place.
+                // caller class loader used by Class.forName(String). Pass initialize=false so
+                // that static initializers are not run during class resolution.
                 ClassLoader cl = Thread.currentThread().getContextClassLoader();
                 Class<?> resolved = Class.forName(pmClassName, false, cl);
                 if (!PluginManager.class.isAssignableFrom(resolved)) {
